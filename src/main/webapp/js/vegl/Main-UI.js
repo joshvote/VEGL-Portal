@@ -61,6 +61,21 @@ Ext.application({
             autoLoad : true
         });
 
+        // Create the ResearchDataLayer store
+        var researchDataLayerStore = Ext.create('Ext.data.Store', {
+            model : 'portal.knownlayer.KnownLayer',
+            groupField: 'group',
+            proxy : {
+                type : 'ajax',
+                url : 'getResearchDataLayers.do',
+                reader : {
+                    type : 'json',
+                    root : 'data'
+                }
+            },
+            autoLoad : true
+        });
+
         //Create our store for holding the set of
         //layers that have been added to the map
         var layerStore = Ext.create('portal.layer.LayerStore', {});
@@ -122,7 +137,7 @@ Ext.application({
             var activePanel = tabsPanel.activeTab;
             activePanel.addSelectedLayerToActive();
         };
-        
+
         /**
          * Used to show extra details for querying services
          */
@@ -157,28 +172,28 @@ Ext.application({
 
             for( var z = 0; z < record.length; z++) {
                 var newLayer = null;
-                
+
                 //Ensure the layer DNE first
                 var existingRecord = layerStore.getById(record[z].get('id'));
                 if (existingRecord) {
                     layersPanel.getSelectionModel().select([existingRecord], false);
                     return;
                  }
-    
+
                 //Turn our KnownLayer/CSWRecord into an actual Layer
                 if (record[z] instanceof portal.csw.CSWRecord) {
                     newLayer = record[z].get('layer');
                 } else {
                     newLayer = record[z].get('layer');
                 }
-    
+
                 //if newLayer is undefined, it must have come from some other source like mastercatalogue
                 if (!newLayer){
                     newLayer = layerFactory.generateLayerFromCSWRecord(record[z])
                     //we want it to display immediately.
                     newLayer.set('displayed',true);
                 }
-    
+
                 //We may need to show a popup window with copyright info
                 var cswRecords = newLayer.get('cswRecords');
                 for (var i = 0; i < cswRecords.length; i++) {
@@ -187,20 +202,20 @@ Ext.application({
                             width : 625,
                             cswRecords : cswRecords
                         });
-    
+
                         popup.show();
-    
+
                         //HTML images may take a moment to load which stuffs up our layout
                         //This is a horrible, horrible workaround.
                         var task = new Ext.util.DelayedTask(function(){
                             popup.doLayout();
                         });
                         task.delay(1000);
-    
+
                         break;
                     }
                 }
-    
+
                 layerStore.insert(0,newLayer); //this adds the layer to our store
                 layersPanel.getSelectionModel().select([newLayer], false); //this ensures it gets selected
             }
@@ -227,6 +242,33 @@ Ext.application({
             }
         });
 
+        var researchDataPanel = Ext.create('portal.widgets.panel.KnownLayerPanel', {
+            title : 'Research Data',
+            store : researchDataLayerStore,
+            enableBrowse : false,//VT: if true browse catalogue option will appear
+            map : map,
+            tooltip : {
+                title : 'Research Data Layers',
+                text : '<p1>The layers in this tab represent past/present research activities and may contain partial or incomplete information.</p1>',
+                showDelay : 100,
+                dismissDelay : 30000
+            },
+            listeners : {
+                select : function(rowModel, record, index) {
+                    var newLayer;
+                    if(record.get('layer')){
+                        newLayer = record.get('layer');
+                    }else{
+                        newLayer = layerFactory.generateLayerFromKnownLayer(record);
+                        record.set('layer', newLayer);
+                    }
+
+                    filterPanel.showFilterForLayer(newLayer);
+                },
+                addlayerrequest : handleAddRecordToMap
+            }
+        });
+
         // basic tabs 1, built from existing content
         var tabsPanel = Ext.create('Ext.TabPanel', {
             id : 'vgl-tabs-panel',
@@ -235,7 +277,7 @@ Ext.application({
             split : true,
             height : 265,
             enableTabScroll : true,
-            items:[knownLayersPanel]
+            items:[knownLayersPanel, researchDataPanel]
         });
 
         /**
@@ -314,7 +356,7 @@ Ext.application({
           }
 
         });
-        
+
         //Create our permalink generation handler
         var permalinkHandler = function() {
             var mss = Ext.create('portal.util.permalink.MapStateSerializer');
@@ -328,8 +370,8 @@ Ext.application({
                     version : version
                 });
 
-                popup.show(); 
-            });            
+                popup.show();
+            });
         };
         Ext.get('permalink').on('click', permalinkHandler);
         Ext.get('permalinkicon').on('click', permalinkHandler);
@@ -340,7 +382,7 @@ Ext.application({
         if (urlParams && (urlParams.state || urlParams.s)) {
             var decodedString = urlParams.state ? urlParams.state : urlParams.s;
             var decodedVersion = urlParams.v;
-            
+
             deserializationHandler = Ext.create('portal.util.permalink.DeserializationHandler', {
                 knownLayerStore : knownLayerStore,
                 cswRecordStore : unmappedCSWRecordStore,
@@ -349,8 +391,8 @@ Ext.application({
                 map : map,
                 stateString : decodedString,
                 stateVersion : decodedVersion
-            });           
-            
+            });
+
         }
     }
 });
