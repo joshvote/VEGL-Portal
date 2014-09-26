@@ -189,6 +189,20 @@
         </constructor-arg>
     </bean>
 
+    <bean id="cloudStorageService-csiro" class="org.auscope.portal.core.services.cloud.CloudStorageService">
+        <constructor-arg name="endpoint" value="http://152.83.253.2:5000/v2.0"/>
+        <constructor-arg name="provider" value="swift-keystone"/>
+        <constructor-arg name="accessKey" value="${env.csiro.storage.accesskey}"/>
+        <constructor-arg name="secretKey" value="${env.csiro.storage.secretkey}"/>
+        <constructor-arg name="regionName" value=""/>
+        <constructor-arg name="relaxHostName" value="false"/>
+        <constructor-arg name="stripExpectHeader" value="true"/>
+        <property name="name" value="CSIRO (Internal Research Cloud)"/>
+        <property name="id" value="cloudStorageService-csiro"/>
+        <property name="bucket" value="vgl-portal"/>
+        <property name="authVersion" value="2.0"/>
+    </bean>
+
     <bean id="cloudStorageService-nectar-melb" class="org.auscope.portal.core.services.cloud.CloudStorageService">
         <constructor-arg name="endpoint" value="https://keystone.rc.nectar.org.au:5000/v2.0"/>
         <constructor-arg name="provider" value="swift-keystone"/>
@@ -204,6 +218,36 @@
     </bean>
 
     <bean id="inetAddress" class="java.net.InetAddress" factory-method="getLocalHost"/>
+
+    <bean id="cloudComputeService-csiro" class="org.auscope.portal.core.services.cloud.CloudComputeService">
+        <constructor-arg name="provider" value="NovaKeystone"/>
+        <constructor-arg name="endpoint" value="http://152.83.253.2:5000/v2.0"/>
+        <constructor-arg name="accessKey" value="${env.csiro.ec2.accesskey}"/>
+        <constructor-arg name="secretKey" value="${env.csiro.ec2.secretkey}"/>
+        <property name="id" value="csiro-openstack-compute"/>
+        <property name="name" value="CSIRO (Internal Research Cloud)"/>
+        <property name="groupName" value ="vgl-#{inetAddress.hostName.toLowerCase()}"/>
+        <property name="availableImages">
+            <list>
+                <bean class="org.auscope.portal.server.vegl.VglMachineImage">
+                    <constructor-arg name="imageId" value="RegionOne/b9ee77ef-56b5-4f3f-b694-05d23d3c1718"/>                   
+                    <property name="name" value="AEM-Inversion"/>
+                    <property name="description"><value>A Centos 6 machine with AEM Inversion already installed.</value></property>
+                    <property name="keywords">
+                        <array>
+                            <value>AEM-Inversion</value>
+                            <value>centos6</value>
+                        </array>
+                    </property>
+                    <property name="permissions">
+                        <array>
+                            <value>ROLE_USER</value>
+                        </array>
+                    </property>
+                </bean>
+            </list>
+        </property>
+    </bean>
 
     <bean id="cloudComputeService-nectar" class="org.auscope.portal.core.services.cloud.CloudComputeService">
         <constructor-arg name="provider" value="NovaKeystone"/>
