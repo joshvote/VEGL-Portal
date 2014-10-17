@@ -16,7 +16,7 @@ Ext.define('vegl.widgets.SeriesPanel', {
     contextMenu : null,
 
     constructor : function(config) {
-
+        var dragGroup = Ext.id();
         this.cancelSeriesAction = new Ext.Action({
             text: 'Cancel series jobs',
             iconCls: 'cross-icon',
@@ -44,6 +44,19 @@ Ext.define('vegl.widgets.SeriesPanel', {
         });
 
         Ext.apply(config, {
+            viewConfig: {
+                plugins: {
+                    ptype: 'gridviewdragdrop',
+                    dragGroup: dragGroup,
+                    dropGroup: dragGroup
+                },
+                listeners: {
+                    drop: function(node, data, dropRec, dropPosition) {
+                        var dropOn = dropRec ? ' ' + dropPosition + ' ' + dropRec.get('name') : ' on empty view';
+                        Ext.example.msg('Drag from right to left', 'Dropped ' + data.records[0].get('name') + dropOn);
+                    }
+                }
+            },
             plugins : [{
                 ptype : 'inlinecontextmenu',
                 align : 'center',

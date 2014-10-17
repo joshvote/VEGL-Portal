@@ -2,9 +2,10 @@ package org.auscope.portal.server.vegl;
 
 import java.util.Date;
 import java.util.List;
-import org.hibernate.exception.ExceptionUtils;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.hibernate.exception.ExceptionUtils;
 
 /**
  * Class that talks to the data objects to retrieve or save data
@@ -20,6 +21,7 @@ public class VEGLJobManager {
     private VEGLSeriesDao veglSeriesDao;
     private VGLJobAuditLogDao vglJobAuditLogDao;
     private VGLSignatureDao vglSignatureDao;
+    private VGLFolderDao vglFolderDao;
 
     public List<VEGLSeries> querySeries(String user, String name, String desc) {
         return veglSeriesDao.query(user, name, desc);
@@ -119,6 +121,30 @@ public class VEGLJobManager {
         veglSeriesDao.save(series);
     }
 
+    public void deleteFolder(VGLFolder folder) {
+        vglFolderDao.delete(folder);
+    }
+
+    public void saveFolder(VGLFolder folder) {
+        vglFolderDao.save(folder);
+    }
+
+    public List<VGLFolder> getAllFoldersForUser(final String user) {
+        return vglFolderDao.getFoldersForUser(user);
+    }
+
+    public List<VGLFolder> getFoldersForUser(final String user, final Integer parent) {
+        return vglFolderDao.getFoldersForUser(user, parent);
+    }
+
+    public List<VEGLJob> getFolderJobs(final String user, Integer parentFolder) {
+        return veglJobDao.getJobsOfFolder(user, parentFolder);
+    }
+
+    public VGLFolder getFolderById(int folderId) {
+        return vglFolderDao.get(folderId);
+    }
+
     public void saveSignature(VGLSignature vglSignature) {
         vglSignatureDao.save(vglSignature);
     }
@@ -137,5 +163,12 @@ public class VEGLJobManager {
 
     public void setVglSignatureDao(VGLSignatureDao vglSignatureDao) {
         this.vglSignatureDao = vglSignatureDao;
+    }
+
+    public VGLFolderDao getVglFolderDao() {
+        return vglFolderDao;
+    }
+    public void setVglFolderDao(VGLFolderDao vglFolderDao) {
+        this.vglFolderDao = vglFolderDao;
     }
 }

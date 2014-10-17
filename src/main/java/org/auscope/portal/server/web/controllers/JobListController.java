@@ -19,6 +19,8 @@ import java.util.zip.ZipOutputStream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import net.sf.json.JSONArray;
+
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
@@ -33,9 +35,11 @@ import org.auscope.portal.core.services.cloud.FileStagingService;
 import org.auscope.portal.core.services.cloud.monitor.JobStatusException;
 import org.auscope.portal.core.services.cloud.monitor.JobStatusMonitor;
 import org.auscope.portal.core.util.FileIOUtil;
+import org.auscope.portal.core.view.JSONModelAndView;
 import org.auscope.portal.server.vegl.VEGLJob;
 import org.auscope.portal.server.vegl.VEGLJobManager;
 import org.auscope.portal.server.vegl.VEGLSeries;
+import org.auscope.portal.server.vegl.VGLFolder;
 import org.auscope.portal.server.vegl.VGLJobStatusAndLogReader;
 import org.auscope.portal.server.vegl.VGLPollingJobQueueManager;
 import org.auscope.portal.server.vegl.VGLQueueJob;
@@ -858,5 +862,90 @@ public class JobListController extends BaseCloudController  {
         }
 
         return generateJSONResponseMAV(true, Arrays.asList(namedSections), "");
+    }
+
+
+    @RequestMapping("/secure/getJobsAndFolderNodes.do")
+    public ModelAndView getJobsAndFolders(HttpServletRequest request,
+            @RequestParam(value="node") String nodeId,
+            @AuthenticationPrincipal PortalUser user) {
+
+        try {
+            String[] parts = nodeId.split("/");
+            Integer folderId = null;
+
+            if (parts.length > 1) {
+                folderId = Integer.parseInt(parts[parts.length - 1].replace("folder-", ""));
+            }
+
+            List<VEGLJob> jobs = jobManager.getFolderJobs(user.getEmail(), folderId);
+            List<VGLFolder> folders = jobManager.getFoldersForUser(user.getEmail(), folderId);
+
+            JSONArray nodes = new JSONArray();
+            for (VGLFolder folder : folders) {
+                ModelMap node = new ModelMap();
+
+                node.put("text", folder.getName());
+                node.put("id", "folder-" + folder.getId().toString());
+                node.put("folderId", folder.getId().toString());
+                node.put("leaf", false);
+                node.put("cls", "folder");
+                nodes.add(node);
+            }
+
+            for (VEGLJob job : jobs) {
+                ModelMap node = new ModelMap();
+                node.put("text", job.getName());
+                node.put("id", "job-" + job.getId().toString());
+                node.put("status", job.getStatus());
+                node.put("leaf", true);
+                node.put("cls", "file");
+                nodes.add(node);
+            }
+
+            return new JSONModelAndView(nodes);
+        } catch (Exception ex) {
+            return generateJSONResponseMAV(false, null, ex.getMessage());
+        }
+    }
+
+    @RequestMapping("/secure/getJobsAndFolders.do")
+    public ModelAndView getJobsAndFolders(HttpServletRequest request,
+            @RequestParam(value="parent", required=false, defaultValue="") Integer parent,
+            @AuthenticationPrincipal PortalUser user) {
+
+        try {
+            List<VEGLJob> jobs = jobManager.getFolderJobs(user.getEmail(), parent);
+            List<VGLFolder> folders = jobManager.getFoldersForUser(user.getEmail(), parent);
+            ModelMap data = new ModelMap();
+            data.put("jobs", jobs);
+            data.put("folders", folders);
+            return generateJSONResponseMAV(true, data, "");
+        } catch (Exception ex) {
+            return generateJSONResponseMAV(false, null, ex.getMessage());
+        }
+    }
+
+    @RequestMapping("/secure/updateFolder.do")
+    public ModelAndView getJobsAndFolders(HttpServletRequest request,
+            @RequestParam(value="folderId", required=false) Integer folderId,
+            @RequestParam(value="parent", required=false) Integer parent,
+            @RequestParam(value="name", required=false) String name,
+            @AuthenticationPrincipal PortalUser user) {
+
+        VGLFolder folder = null;
+        if (folderId == null) {
+            folder = new VGLFolder();
+        } else {
+            folder = jobManager.getFolderById(folderId);
+        }
+
+        if (name != null) {
+            folder.setName(name);
+        }
+
+        folder.setParent(parent);
+        jobManager.saveFolder(folder);
+        return generateJSONResponseMAV(true, Arrays.asList(folder), "");
     }
 }

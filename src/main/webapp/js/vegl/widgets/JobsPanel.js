@@ -9,7 +9,7 @@
  * error : function(vegl.widgets.SereisPanel panel, String message) - fires whenever a comms error occurs
  */
 Ext.define('vegl.widgets.JobsPanel', {
-    extend : 'Ext.grid.Panel',
+    extend : 'Ext.tree.Panel',
     alias : 'widget.jobspanel',
 
     jobSeriesFrm : null,
@@ -19,6 +19,9 @@ Ext.define('vegl.widgets.JobsPanel', {
     deleteJobAction : null,
     duplicateJobAction : null,
     editJobAction : null,
+
+    jobStore : null,
+    folderStore : null,
 
     /**
      * Accepts the config for a Ext.grid.Panel along with the following additions:
@@ -103,12 +106,20 @@ Ext.define('vegl.widgets.JobsPanel', {
             }
         });
 
+        this.jobStore = Ext.create('Ext.data.Store', {
+            model : 'vegl.models.Job',
+        });
+
+        this.folderStore = Ext.create('Ext.data.Store', {
+            model : 'vegl.models.Folder',
+        });
+
         var columns = [{
-            header: 'Job Name',
-            sortable: true,
+            xtype : 'treecolumn',
+            text : 'Job Name',
             flex : config.showProcessDuration ? undefined : 1,
             width : config.showProcessDuration ? 180 : undefined,
-            dataIndex: 'name'
+            dataIndex: 'text'
          },{
              header: 'Submit Date',
              width: 160,
@@ -138,30 +149,44 @@ Ext.define('vegl.widgets.JobsPanel', {
         }
 
         Ext.apply(config, {
-            plugins : [{
+            viewConfig: {
+                plugins: {
+                    ptype: 'treeviewdragdrop',
+                    dragGroup: 'jobs-panel-drag-group',
+                    dropGroup: 'jobs-panel-drag-group'
+                },
+                listeners: {
+                    drop: function(node, data, dropRec, dropPosition) {
+                        //var dropOn = dropRec ? ' ' + dropPosition + ' ' + dropRec.get('name') : ' on empty view';
+                        //Ext.example.msg('Drag from right to left', 'Dropped ' + data.records[0].get('name') + dropOn);
+                    }
+                }
+            },
+            /*plugins : [{
                 ptype : 'inlinecontextmenu',
                 align : 'center',
                 actions: [this.cancelJobAction, this.deleteJobAction, this.duplicateJobAction, this.editJobAction, this.submitJobAction]
-            }],
-            store : Ext.create('Ext.data.Store', {
-                model : 'vegl.models.Job',
-                proxy : {
-                    type : 'ajax',
-                    url : 'secure/listJobs.do',
-                    extraParams : {seriesId : null},
-                    reader : {
-                        type : 'json',
-                        root : 'data'
-                    },
-                    listeners : {
-                        exception : function(proxy, response, operation) {
-                            responseObj = Ext.JSON.decode(response.responseText);
-                            errorMsg = responseObj.msg;
-                            errorInfo = responseObj.debugInfo;
-                            portal.widgets.window.ErrorWindow.showText('Error', errorMsg, errorInfo);
-                        }
-                    }
-                }
+            }],*/
+            /*store : Ext.create('Ext.data.TreeStore', {
+                root : {
+                    text : 'Jobs',
+                    id : null,
+                    expanded : true
+                },
+                model : 'vegl.widgets.JobsPanel.node',
+                folderSort: true
+            }),*/
+            store: new Ext.data.TreeStore({
+                proxy: {
+                    type: 'ajax',
+                    url: 'secure/getJobsAndFolderNodes.do'
+                },
+                root: {
+                    text: 'Jobs',
+                    id: 'jobs',
+                    expanded: true
+                },
+                folderSort: true
             }),
             columns: columns,
             buttons: [{
@@ -177,6 +202,14 @@ Ext.define('vegl.widgets.JobsPanel', {
                 tooltip : 'Refresh the list of jobs for the selected series',
                 iconCls: 'refresh-icon',
                 handler: Ext.bind(this._onRefresh, this)
+            }],
+            tbar : [{
+                xtype : 'button',
+                iconCls : 'add',
+                text : 'New Folder',
+                handler : function() {
+
+                }
             }]
         });
 
@@ -189,10 +222,75 @@ Ext.define('vegl.widgets.JobsPanel', {
 
         this.callParent(arguments);
 
-        this.on('select', this._onJobSelection, this);
-        this.on('selectionchange', this._onSelectionChange, this);
+        //this.on('select', this._onRowSelection, this);
+        //this.on('selectionchange', this._onSelectionChange, this);
+
+        //this._getNodesForFolder(null); // Get the top level folders/jobs
     },
 
+
+    /*_getNodesForFolder: function(folderId) {
+        Ext.Ajax.request({
+            url: 'secure/getJobsAndFolders.do',
+            params: {parent : folderId},
+            scope : this,
+            callback : function(options, success, response) {
+                if (!success) {
+                    portal.widgets.window.ErrorWindow.show('Communications Error', 'There was an error contacting the VGL server. Consider refreshing the page');
+                    return;
+                }
+
+                var responseObj = Ext.JSON.decode(response.responseText);
+                if (!responseObj.success) {
+                    portal.widgets.window.ErrorWindow.show(responseObj);
+                    return;
+                }
+
+                var jobsJson = responseObj.data.jobs;
+                var foldersJson = responseObj.data.folders;
+                this.jobStore.loadData(jobsJson);
+                this.folderStore.loadData(foldersJson);
+
+                var parent = null;
+                if (folderId) {
+                    parent = this.getStore().getNodeById('folder-' + folderId);
+                } else {
+                    parent = this.getRootNode();
+                }
+
+                Ext.each(jobsJson, function(json) {
+                    var child = parent.appendChild({
+                        id : 'job-' + json.id,
+                        leaf : true,
+                        text : json.name,
+                        allowDrag : true,
+                        allowDrop : false
+                    });
+
+                    child.set('jobId', json.id);
+                    child.set('submitDate', json.submitDate);
+                    child.set('status', json.status);
+                });
+
+                Ext.each(foldersJson, function(json) {
+                    var child = parent.appendChild({
+                        id : 'folder-' + json.id,
+                        leaf : false,
+                        text : json.name,
+                        allowDrag : true,
+                        allowDrop : true
+                    });
+
+                    child.set('folderId', json.id);
+                    child.set('loaded', false);
+                });
+
+                parent.set('loaded', true);
+                parent.set('loading', false);
+                parent.expand();
+            }
+        });
+    },*/
 
     _timeDiffinMinutes: function(d1, d2) {
         var t2 = d2.getTime();
@@ -283,11 +381,23 @@ Ext.define('vegl.widgets.JobsPanel', {
         }
     },
 
-    _onJobSelection : function(sm, job) {
-        var allowedToRegister = (job.get('status') === vegl.models.Job.STATUS_DONE) && Ext.isEmpty(job.get('registeredUrl'));
-        this.queryById('btnRegister').setDisabled(!allowedToRegister);
+    _onRowSelection : function(sm, row) {
 
-        this.fireEvent('selectjob', this, job);
+        //Row could be a job or a folder
+        if (row.get('jobId')) {
+            var job = this.jobStore.getById(row.get('jobId'));
+
+            var allowedToRegister = (job.get('status') === vegl.models.Job.STATUS_DONE) && Ext.isEmpty(job.get('registeredUrl'));
+            this.queryById('btnRegister').setDisabled(!allowedToRegister);
+
+            this.fireEvent('selectjob', this, job);
+        } else  if (row.get('folderId')) {
+            var folder = this.folderStore.getById(row.get('folderId'));
+            if (!row.isLoaded() && !row.isLoading()) {
+                row.set('loading', true);
+                this._getNodesForFolder(row.get('folderId'));
+            }
+        }
     },
 
     _jobStatusRenderer : function(value, cell, record) {
@@ -563,3 +673,26 @@ Ext.define('vegl.widgets.JobsPanel', {
         });
     }
 });
+
+Ext.define('vegl.widgets.JobsPanel.node', {
+    extend: 'Ext.data.Model',
+
+    fields: [
+        { name: 'id', type: 'int' },
+        { name: 'jobId', type: 'int' },
+        { name: 'folderId', type: 'int'},
+        { name: 'name', type: 'string'},
+        { name: 'submitDate', type: 'date', convert: function(value, record) {
+            if (!value) {
+                return null;
+            } else {
+                return new Date(value.time);
+            }
+        }}, //When this job was submitted to the cloud
+        { name: 'status', type: 'string'},
+        { name: 'processTimeLog', type: 'string'}
+    ],
+
+    idProperty : 'id'
+});
+

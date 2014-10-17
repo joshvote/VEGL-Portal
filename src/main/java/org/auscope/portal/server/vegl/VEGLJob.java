@@ -9,9 +9,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.auscope.portal.core.cloud.CloudJob;
 import org.auscope.portal.server.vegl.VglParameter.ParameterType;
-import org.auscope.portal.server.web.controllers.JobBuilderController;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.support.ClassPathXmlApplicationContext;
 
 /**
  * A specialisation of a generic cloud job for the VEGL Portal
@@ -27,7 +24,7 @@ public class VEGLJob extends CloudJob implements Cloneable {
     private Integer seriesId;
     private boolean emailNotification;
     private String processTimeLog;
-
+    private Integer folderId;
 
     /** A map of VglParameter objects keyed by their parameter names*/
     private Map<String, VglParameter> jobParameters = new HashMap<String, VglParameter>();
@@ -197,6 +194,15 @@ public class VEGLJob extends CloudJob implements Cloneable {
         }
     }
 
+    public Integer getFolderId() {
+        return folderId;
+    }
+
+
+    public void setFolderId(Integer folderId) {
+        this.folderId = folderId;
+    }
+
     /**
      * Similar to clone but ensures compatibility with hibernate. No IDs or references (except for immutable ones)
      * will be shared by the clone and this object.
@@ -219,6 +225,7 @@ public class VEGLJob extends CloudJob implements Cloneable {
         newJob.setStorageBaseKey(this.getStorageBaseKey());
         newJob.setSubmitDate(this.getSubmitDate()); //this job isn't submitted yet
         newJob.setUser(this.getUser());
+        newJob.setFolderId(this.getFolderId());
 
         List<VglDownload> newDownloads = new ArrayList<VglDownload>();
         for (VglDownload dl : this.getJobDownloads()) {

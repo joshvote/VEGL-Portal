@@ -273,6 +273,7 @@
         <property name="veglSeriesDao" ref="veglSeriesDao"/>
         <property name="vglJobAuditLogDao" ref="vglJobAuditLogDao"/>
         <property name="vglSignatureDao" ref="vglSignatureDao"/>
+        <property name="vglFolderDao" ref="vglFolderDao"/>
     </bean>
 
     <bean id="veglJobDao" class="org.auscope.portal.server.vegl.VEGLJobDao">
@@ -290,6 +291,10 @@
     <bean id="vglSignatureDao" class="org.auscope.portal.server.vegl.VGLSignatureDao">
         <property name="sessionFactory" ref="veglSessionFactory"/>
     </bean>
+    
+    <bean id="vglFolderDao" class="org.auscope.portal.server.vegl.VGLFolderDao">
+        <property name="sessionFactory" ref="veglSessionFactory"/>
+    </bean>
 
     <bean id="veglSessionFactory" class="org.springframework.orm.hibernate3.LocalSessionFactoryBean">
         <property name="dataSource" ref="dataSource"/>
@@ -301,6 +306,7 @@
                 <value>vgljobsauditlog.hbm.xml</value>
                 <value>vgldownload.hbm.xml</value>
                 <value>vglsignature.hbm.xml</value>
+                <value>vglfolders.hbm.xml</value>
             </list>
         </property>
         <property name="hibernateProperties">

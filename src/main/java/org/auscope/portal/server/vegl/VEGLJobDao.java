@@ -5,6 +5,8 @@ import java.util.List;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.auscope.portal.server.web.controllers.JobBuilderController;
+import org.hibernate.Criteria;
+import org.hibernate.criterion.Restrictions;
 import org.springframework.orm.hibernate3.support.HibernateDaoSupport;
 
 /**
@@ -26,6 +28,21 @@ public class VEGLJobDao extends HibernateDaoSupport {
         return (List<VEGLJob>) getHibernateTemplate()
             .findByNamedParam("from VEGLJob j where j.seriesId=:searchID and lower(j.status)!='deleted'",
                     "searchID", seriesID);
+    }
+
+    /**
+     * Retrieves jobs that are grouped under given Folder.
+     * Excludes deleted jobs.
+     */
+    @SuppressWarnings("unchecked")
+    public List<VEGLJob> getJobsOfFolder(final String email, final Integer folderId) {
+        Criteria c = getSession().createCriteria(VEGLJob.class);
+
+        c.add(Restrictions.eq("emailAddress", email));
+        c.add(Restrictions.ne("status", "Deleted"));
+        c.add(folderId == null ? Restrictions.isNull("seriesId") : Restrictions.eq("seriesId", folderId));
+
+        return (List<VEGLJob>) c.list();
     }
 
     /**

@@ -23,6 +23,7 @@
         <property name="registeredUrl"/>
         <property name="seriesId"/>
         <property name="storageBaseKey"/>
+        <property name="folderId"/>
         <property name="emailNotification" type="yes_no" />
 
         <map name="jobParameters" lazy="false" cascade="all" inverse="true">
